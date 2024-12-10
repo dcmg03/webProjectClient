@@ -1,38 +1,43 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
+import { DataTable } from 'primereact/datatable';
+import { Column } from 'primereact/column';
 import Link from 'next/link';
-
-type Rubro = {
-  id: number;
-  nombre: string;
-  presupuestoInicial: number;
-  presupuestoDisponible: number;
-};
+import { Button } from 'primereact/button';
 
 export default function RubrosPage() {
-  const [rubros, setRubros] = useState<Rubro[]>([]);
+  const [rubros, setRubros] = useState([]);
 
   useEffect(() => {
-    fetch('http://localhost:8080/api/rubros') // Reemplaza con el endpoint de tu backend
+    fetch('http://localhost:8080/api/rubros')
       .then((res) => res.json())
       .then((data) => setRubros(data))
-      .catch((error) => console.error('Error al cargar rubros:', error));
+      .catch((error) => console.error('Error al cargar los rubros:', error));
   }, []);
 
+  const detalleTemplate = (rowData) => {
+    return (
+      <Link href={`/rubros/${rowData.id}`}>
+        <Button label="Ver Detalle" icon="pi pi-info-circle" className="p-button-text" />
+      </Link>
+    );
+  };
+
   return (
-    <main>
-      <h1>Lista de Rubros</h1>
-      <ul>
-        {rubros.map((rubro) => (
-          <li key={rubro.id}>
-            <Link href={`/rubros/${rubro.id}`}>
-              {rubro.nombre} - ${rubro.presupuestoDisponible}
-            </Link>
-          </li>
-        ))}
-      </ul>
-      <Link href="/">Volver al inicio</Link>
+    <main className="p-6">
+      <h1 className="text-3xl font-bold mb-4">Lista de Rubros</h1>
+      <DataTable value={rubros} paginator rows={5} responsiveLayout="scroll">
+        <Column field="nombre" header="Nombre"></Column>
+        <Column field="presupuestoInicial" header="Presupuesto Inicial"></Column>
+        <Column field="presupuestoDisponible" header="Presupuesto Disponible"></Column>
+        <Column header="Acciones" body={detalleTemplate}></Column>
+      </DataTable>
+      <div className="mt-4">
+        <Link href="/">
+          <Button label="Volver al Inicio" icon="pi pi-arrow-left" className="p-button-secondary" />
+        </Link>
+      </div>
     </main>
   );
 }

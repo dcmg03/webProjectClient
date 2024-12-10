@@ -1,6 +1,11 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+@import "primereact/resources/themes/lara-light-indigo/theme.css"; /* Tema */
+@import "primereact/resources/primereact.min.css"; /* Estilos base */
+@import "primeicons/primeicons.css"; /* Íconos */
+@import "primeflex/primeflex.css"; /* Clases utilitarias opcionales */
+
 
 :root {
   --background: #ffffff;
