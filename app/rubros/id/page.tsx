@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { Button } from 'primereact/button';
 import { Card } from 'primereact/card';
@@ -21,15 +20,29 @@ export default function DetalleRubroPage({ params }) {
     return <p className="p-6">Cargando...</p>;
   }
 
+  const headerTemplate = (
+    <div className="flex justify-between items-center">
+      <h2 className="text-2xl font-bold">Detalles del Rubro</h2>
+    </div>
+  );
+
   return (
     <main className="p-6">
-      <Card title={`Rubro: ${rubro.nombre}`} className="mb-4">
-        <p>Presupuesto Inicial: ${rubro.presupuestoInicial}</p>
-        <p>Presupuesto Disponible: ${rubro.presupuestoDisponible}</p>
+      <Card title={`Rubro: ${rubro.nombre}`} className="shadow-md" header={headerTemplate}>
+        <p className="text-lg">
+          <strong>Presupuesto Inicial:</strong> ${rubro.presupuestoInicial}
+        </p>
+        <p className="text-lg">
+          <strong>Presupuesto Disponible:</strong> ${rubro.presupuestoDisponible}
+        </p>
       </Card>
-      <Link href="/rubros">
-        <Button label="Volver a Rubros" icon="pi pi-arrow-left" className="p-button-secondary" />
-      </Link>
+      <div className="mt-4">
+        <Link href="/rubros">
+          <Button label="Volver a Rubros" icon="pi pi-arrow-left" className="p-button-secondary" />
+        </Link>
+      </div>
     </main>
   );
 }
+
+
