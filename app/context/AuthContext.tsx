@@ -1,36 +1,33 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+'use client';
+import { createContext, useContext, useState } from 'react';
+import api from '../services/api';
 
-const AuthContext = createContext<any>(null);
+interface AuthContextType {
+    user: string | null;
+    login: (username: string, password: string) => Promise<void>;
+    logout: () => void;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-    const [user, setUser] = useState(null);
+    const [user, setUser] = useState<string | null>(null);
 
-    useEffect(() => {
-        const fetchUser = async () => {
-            try {
-                const response = await fetch('http://localhost:8080/auth/me', {
-                    credentials: 'include',
-                });
-                if (response.ok) {
-                    const data = await response.json();
-                    setUser(data);
-                }
-            } catch (error) {
-                console.error('Error al obtener el usuario:', error);
-            }
-        };
-
-        fetchUser();
-    }, []);
-
-    const login = (userData: any) => setUser(userData);
-    const logout = async () => {
+    const login = async (username: string, password: string) => {
         try {
-            await fetch('http://localhost:8080/auth/logout', { method: 'POST', credentials: 'include' });
-            setUser(null);
+            const response = await api.post('/auth/login', { username, password });
+            const { token } = response.data;
+            sessionStorage.setItem('token', token); // Guarda el token
+            setUser(username); // Actualiza el estado del usuario
         } catch (error) {
-            console.error('Error al cerrar sesión:', error);
+            console.error('Error en login:', error);
+            throw error;
         }
+    };
+
+    const logout = () => {
+        sessionStorage.removeItem('token');
+        setUser(null);
     };
 
     return (
@@ -40,4 +37,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     );
 };
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+    const context = useContext(AuthContext);
+    if (!context) throw new Error('useAuth must be used within an AuthProvider');
+    return context;
+};
