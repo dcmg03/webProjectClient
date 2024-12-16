@@ -1,16 +1,19 @@
-import axios from 'axios';
+const API_URL = "http://localhost:3005/auth"; // Reemplaza con la URL correcta del backend
 
-const api = axios.create({
-    baseURL: 'http://localhost:8080', // URL del backend
-});
+const api = {
+    login: async (data: { username: string; password: string }) => {
+        const response = await fetch(`${API_URL}/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data),
+        });
 
-// Interceptor para agregar el token JWT a cada solicitud
-api.interceptors.request.use((config) => {
-    const token = sessionStorage.getItem('token');
-    if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-});
+        if (!response.ok) {
+            throw new Error("Login failed");
+        }
+
+        return await response.json();
+    },
+};
 
 export default api;

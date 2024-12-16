@@ -5,188 +5,211 @@ import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
 import { Card } from 'primereact/card';
-import { ProgressBar } from 'primereact/progressbar';
 import { Dialog } from 'primereact/dialog';
 import { InputText } from 'primereact/inputtext';
 import { InputNumber } from 'primereact/inputnumber';
 import { Chart } from 'primereact/chart';
+import { supabase } from '@/services/supabaseClient';
 
 export default function RubrosPage() {
-  const [rubros, setRubros] = useState([]);
-  const [isDialogVisible, setIsDialogVisible] = useState(false);
-  const [nombre, setNombre] = useState('');
-  const [presupuestoInicial, setPresupuestoInicial] = useState(null);
+    const [rubros, setRubros] = useState([]);
+    const [isDialogVisible, setIsDialogVisible] = useState(false);
+    const [isUpdateMode, setIsUpdateMode] = useState(false);
+    const [selectedRubro, setSelectedRubro] = useState(null);
 
-  useEffect(() => {
-    fetch('http://localhost:8080/api/rubros')
-      .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data)) {
-          setRubros(data);
+    const [nombre, setNombre] = useState('');
+    const [presupuestoInicial, setPresupuestoInicial] = useState(null);
+
+    // Obtener rubros desde Supabase
+    useEffect(() => {
+        fetchRubros();
+    }, []);
+
+    const fetchRubros = async () => {
+        const { data, error } = await supabase.from('rubro').select('*');
+        if (error) {
+            console.error('Error al obtener los rubros:', error);
         } else {
-          console.error('La respuesta de la API no es un arreglo:', data);
-          setRubros([]);
+            setRubros(data);
         }
-      })
-      .catch((error) => {
-        console.error('Error al cargar los rubros:', error);
-        setRubros([]);
-      });
-  }, []);
+    };
 
-  const detalleTemplate = (rowData) => (
-    <Button
-      label="Ver Detalle"
-      icon="pi pi-info-circle"
-      className="p-button-outlined p-button-success"
-    />
-  );
+    // Guardar o actualizar un rubro
+    const handleSaveRubro = async () => {
+        if (isUpdateMode && selectedRubro) {
+            await updateRubro();
+        } else {
+            await addRubro();
+        }
+    };
 
-  const progresoTemplate = (rowData) => {
-    const porcentaje = (rowData.presupuestoDisponible / rowData.presupuestoInicial) * 100;
-    return (
-      <>
-        <ProgressBar value={porcentaje} showValue={false} className="mb-2" />
-        <span>{porcentaje.toFixed(2)}%</span>
-      </>
-    );
-  };
+    const addRubro = async () => {
+        const { data, error } = await supabase
+            .from('rubro')
+            .insert([{ nombre, presupuesto_inicial: presupuestoInicial, presupuesto_disponible: presupuestoInicial }])
+            .select();
 
-  const chartDataPie = {
-    labels: rubros.length ? rubros.map((r) => r.nombre) : [],
-    datasets: [
-      {
-        data: rubros.length ? rubros.map((r) => r.presupuestoDisponible) : [],
-        backgroundColor: ['#42A5F5', '#66BB6A', '#FFA726', '#FF7043', '#9CCC65'],
-        hoverBackgroundColor: ['#64B5F6', '#81C784', '#FFB74D', '#FF8A65', '#AED581'],
-      },
-    ],
-  };
+        if (error) {
+            console.error('Error al agregar el rubro:', error);
+        } else {
+            setRubros([...rubros, ...data]);
+            closeDialog();
+        }
+    };
 
-  const chartDataBar = {
-    labels: rubros.length ? rubros.map((r) => r.nombre) : [],
-    datasets: [
-      {
-        label: 'Presupuesto Inicial',
-        backgroundColor: '#42A5F5',
-        data: rubros.length ? rubros.map((r) => r.presupuestoInicial) : [],
-      },
-      {
-        label: 'Presupuesto Disponible',
-        backgroundColor: '#66BB6A',
-        data: rubros.length ? rubros.map((r) => r.presupuestoDisponible) : [],
-      },
-    ],
-  };
+    const updateRubro = async () => {
+        const { error } = await supabase
+            .from('rubro')
+            .update({ nombre, presupuesto_inicial: presupuestoInicial })
+            .eq('id', selectedRubro.id);
+        if (error) {
+            console.error('Error al actualizar el rubro:', error);
+        } else {
+            fetchRubros();
+            closeDialog();
+        }
+    };
 
-  const handleAddRubro = async () => {
-    try {
-      const response = await fetch('http://localhost:8080/api/rubros', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ nombre, presupuestoInicial }),
-      });
+    // Eliminar un rubro
+    const handleDeleteRubro = async (id) => {
+        const { error } = await supabase.from('rubro').delete().eq('id', id);
+        if (error) {
+            console.error('Error al eliminar el rubro:', error);
+        } else {
+            setRubros(rubros.filter((r) => r.id !== id));
+        }
+    };
 
-      if (response.ok) {
-        const newRubro = await response.json();
-        setRubros([...rubros, newRubro]);
+    const closeDialog = () => {
         setIsDialogVisible(false);
+        setIsUpdateMode(false);
+        setSelectedRubro(null);
         setNombre('');
         setPresupuestoInicial(null);
-      } else {
-        console.error('Error al agregar el rubro');
-      }
-    } catch (error) {
-      console.error('Error al agregar el rubro:', error);
-    }
-  };
+    };
 
-  const dialogFooter = (
-    <div>
-      <Button
-        label="Guardar"
-        icon="pi pi-check"
-        className="p-button-primary"
-        onClick={handleAddRubro}
-      />
-      <Button
-        label="Cancelar"
-        icon="pi pi-times"
-        className="p-button-secondary"
-        onClick={() => setIsDialogVisible(false)}
-      />
-    </div>
-  );
+    const actualizarTemplate = (rowData) => (
+        <Button
+            label="Actualizar"
+            icon="pi pi-refresh"
+            className="p-button-success p-button-outlined"
+            onClick={() => {
+                setSelectedRubro(rowData);
+                setNombre(rowData.nombre);
+                setPresupuestoInicial(rowData.presupuesto_inicial);
+                setIsUpdateMode(true);
+                setIsDialogVisible(true);
+            }}
+        />
+    );
 
-  const headerTemplate = (
-    <div className="flex justify-content-between align-items-center">
-      <h2 className="text-primary">Rubros Disponibles</h2>
-      <Button
-        label="Agregar Rubro"
-        icon="pi pi-plus"
-        className="p-button-primary"
-        onClick={() => setIsDialogVisible(true)}
-      />
-    </div>
-  );
+    const eliminarTemplate = (rowData) => (
+        <Button
+            label="Eliminar"
+            icon="pi pi-trash"
+            className="p-button-danger p-button-outlined"
+            onClick={() => handleDeleteRubro(rowData.id)}
+        />
+    );
 
-  return (
-    <main style={{ padding: '2rem', backgroundColor: '#f5f5f5' }}>
-      <Card title={headerTemplate}>
-        <DataTable
-          value={rubros}
-          paginator
-          rows={5}
-          responsiveLayout="scroll"
-          emptyMessage="No hay rubros disponibles.">
-          <Column field="nombre" header="Nombre" sortable></Column>
-          <Column field="presupuestoInicial" header="Presupuesto Inicial" sortable></Column>
-          <Column field="presupuestoDisponible" header="Presupuesto Disponible" sortable></Column>
-          <Column header="Progreso" body={progresoTemplate}></Column>
-          <Column header="Acciones" body={detalleTemplate}></Column>
-        </DataTable>
-      </Card>
+    const chartDataPie = {
+        labels: rubros.map((r) => r.nombre),
+        datasets: [
+            {
+                data: rubros.map((r) => r.presupuesto_disponible),
+                backgroundColor: ['#42A5F5', '#66BB6A', '#FFA726', '#FF7043', '#9CCC65'],
+                hoverBackgroundColor: ['#64B5F6', '#81C784', '#FFB74D', '#FF8A65', '#AED581'],
+            },
+        ],
+    };
 
-      <Card className="mt-4" title="Distribución de Presupuestos">
-        <Chart type="pie" data={chartDataPie} />
-      </Card>
+    const chartDataBar = {
+        labels: rubros.map((r) => r.nombre),
+        datasets: [
+            {
+                label: 'Presupuesto Inicial',
+                backgroundColor: '#42A5F5',
+                data: rubros.map((r) => r.presupuesto_inicial),
+            },
+            {
+                label: 'Presupuesto Disponible',
+                backgroundColor: '#66BB6A',
+                data: rubros.map((r) => r.presupuesto_disponible),
+            },
+        ],
+    };
 
-      <Card className="mt-4" title="Comparación de Presupuestos">
-        <Chart type="bar" data={chartDataBar} />
-      </Card>
-
-      {/* Modal para agregar rubro */}
-      <Dialog
-        header="Agregar Nuevo Rubro"
-        visible={isDialogVisible}
-        style={{ width: '30vw' }}
-        footer={dialogFooter}
-        onHide={() => setIsDialogVisible(false)}>
-        <div className="p-fluid">
-          <div className="p-field">
-            <label htmlFor="nombre">Nombre</label>
-            <InputText
-              id="nombre"
-              value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
-              placeholder="Ingrese el nombre del rubro"
-            />
-          </div>
-          <div className="p-field mt-3">
-            <label htmlFor="presupuestoInicial">Presupuesto Inicial</label>
-            <InputNumber
-              id="presupuestoInicial"
-              value={presupuestoInicial}
-              onValueChange={(e) => setPresupuestoInicial(e.value)}
-              mode="currency"
-              currency="USD"
-              placeholder="Ingrese el presupuesto inicial"
-            />
-          </div>
+    const dialogFooter = (
+        <div>
+            <Button label="Guardar" icon="pi pi-check" className="p-button-primary" onClick={handleSaveRubro} />
+            <Button label="Cancelar" icon="pi pi-times" className="p-button-secondary" onClick={closeDialog} />
         </div>
-      </Dialog>
-    </main>
-  );
+    );
+
+    const headerTemplate = (
+        <div className="flex justify-content-between align-items-center">
+            <h2 className="text-primary">Rubros Disponibles</h2>
+            <Button
+                label="Agregar Rubro"
+                icon="pi pi-plus"
+                className="p-button-primary"
+                onClick={() => {
+                    setIsDialogVisible(true);
+                    setIsUpdateMode(false);
+                }}
+            />
+        </div>
+    );
+
+    return (
+        <main style={{ padding: '2rem', backgroundColor: '#f5f5f5' }}>
+            <Card title={headerTemplate}>
+                <DataTable value={rubros} paginator rows={5} responsiveLayout="scroll" emptyMessage="No hay rubros disponibles.">
+                    <Column field="nombre" header="Nombre" sortable></Column>
+                    <Column field="presupuesto_inicial" header="Presupuesto Inicial" sortable></Column>
+                    <Column header="Actualizar" body={actualizarTemplate}></Column>
+                    <Column header="Eliminar" body={eliminarTemplate}></Column>
+                </DataTable>
+            </Card>
+
+            <Card className="mt-4" title="Distribución de Presupuestos">
+                <Chart type="pie" data={chartDataPie} />
+            </Card>
+
+            <Card className="mt-4" title="Comparación de Presupuestos">
+                <Chart type="bar" data={chartDataBar} />
+            </Card>
+
+            {/* Modal para agregar o actualizar rubro */}
+            <Dialog
+                header={isUpdateMode ? 'Actualizar Rubro' : 'Agregar Nuevo Rubro'}
+                visible={isDialogVisible}
+                style={{ width: '30vw' }}
+                footer={dialogFooter}
+                onHide={closeDialog}>
+                <div className="p-fluid">
+                    <div className="p-field">
+                        <label htmlFor="nombre">Nombre</label>
+                        <InputText
+                            id="nombre"
+                            value={nombre}
+                            onChange={(e) => setNombre(e.target.value)}
+                            placeholder="Ingrese el nombre del rubro"
+                        />
+                    </div>
+                    <div className="p-field mt-3">
+                        <label htmlFor="presupuestoInicial">Presupuesto Inicial</label>
+                        <InputNumber
+                            id="presupuestoInicial"
+                            value={presupuestoInicial}
+                            onValueChange={(e) => setPresupuestoInicial(e.value)}
+                            mode="currency"
+                            currency="USD"
+                            placeholder="Ingrese el presupuesto inicial"
+                        />
+                    </div>
+                </div>
+            </Dialog>
+        </main>
+    );
 }

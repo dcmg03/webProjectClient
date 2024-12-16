@@ -1,15 +1,19 @@
-import { useEffect } from "react";
-import { useRouter } from "next/router";
+'use client';
 
-export default function AuthGuard({ children }: { children: React.ReactNode }) {
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+
+const AuthGuard = ({ children }: { children: React.ReactNode }) => {
     const router = useRouter();
 
     useEffect(() => {
-        const token = localStorage.getItem("token");
-        if (!token) {
-            router.push("/login");
+        const username = sessionStorage.getItem('username');
+        if (!username) {
+            router.push('/login'); // Redirige al login si no hay sesión
         }
     }, [router]);
 
     return <>{children}</>;
-}
+};
+
+export default AuthGuard;
